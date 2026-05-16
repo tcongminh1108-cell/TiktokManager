@@ -393,6 +393,43 @@ Program.cs
  System.Xml.XPath.dll
  System.Xml.XPath.XDocument.dll
  WindowsBase.dll
+<NUGET>/
+ aspnetcore.healthchecks.npgsql/9.0.0/lib/net8.0/HealthChecks.NpgSql.dll
+ bcrypt.net-next/4.2.0/lib/netstandard2.1/BCrypt-Net-Next.dll
+ efcore.namingconventions/9.0.0/lib/net8.0/EFCore.NamingConventions.dll
+ fluentvalidation.dependencyinjectionextensions/11.12.0/lib/netstandard2.1/FluentValidation.DependencyInjectionExtensions.dll
+ fluentvalidation/11.12.0/lib/net8.0/FluentValidation.dll
+ mapster.core/1.2.1/lib/net7.0/Mapster.Core.dll
+ mapster.dependencyinjection/1.0.1/lib/net7.0/Mapster.DependencyInjection.dll
+ mapster/7.4.0/lib/net7.0/Mapster.dll
+ microsoft.aspnetcore.authentication.jwtbearer/9.0.16/lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
+ microsoft.aspnetcore.openapi/9.0.16/lib/net9.0/Microsoft.AspNetCore.OpenApi.dll
+ microsoft.entityframeworkcore.abstractions/9.0.16/lib/net8.0/Microsoft.EntityFrameworkCore.Abstractions.dll
+ microsoft.entityframeworkcore.relational/9.0.16/lib/net8.0/Microsoft.EntityFrameworkCore.Relational.dll
+ microsoft.entityframeworkcore/9.0.16/lib/net8.0/Microsoft.EntityFrameworkCore.dll
+ microsoft.extensions.dependencymodel/9.0.16/lib/net9.0/Microsoft.Extensions.DependencyModel.dll
+ microsoft.identitymodel.abstractions/8.18.0/lib/net9.0/Microsoft.IdentityModel.Abstractions.dll
+ microsoft.identitymodel.jsonwebtokens/8.18.0/lib/net9.0/Microsoft.IdentityModel.JsonWebTokens.dll
+ microsoft.identitymodel.logging/8.18.0/lib/net9.0/Microsoft.IdentityModel.Logging.dll
+ microsoft.identitymodel.protocols.openidconnect/8.0.1/lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+ microsoft.identitymodel.protocols/8.0.1/lib/net9.0/Microsoft.IdentityModel.Protocols.dll
+ microsoft.identitymodel.tokens/8.18.0/lib/net9.0/Microsoft.IdentityModel.Tokens.dll
+ microsoft.openapi/1.6.17/lib/netstandard2.0/Microsoft.OpenApi.dll
+ npgsql.entityframeworkcore.postgresql/9.0.4/lib/net8.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll
+ npgsql/9.0.3/lib/net8.0/Npgsql.dll
+ polly.core/8.6.6/lib/net8.0/Polly.Core.dll
+ polly/8.6.6/lib/net6.0/Polly.dll
+ scalar.aspnetcore/2.14.14/lib/net9.0/Scalar.AspNetCore.dll
+ serilog.aspnetcore/8.0.3/lib/net8.0/Serilog.AspNetCore.dll
+ serilog.extensions.hosting/8.0.0/lib/net8.0/Serilog.Extensions.Hosting.dll
+ serilog.extensions.logging/8.0.0/lib/net8.0/Serilog.Extensions.Logging.dll
+ serilog.formatting.compact/2.0.0/lib/net7.0/Serilog.Formatting.Compact.dll
+ serilog.settings.configuration/8.0.4/lib/net8.0/Serilog.Settings.Configuration.dll
+ serilog.sinks.console/6.1.1/lib/net8.0/Serilog.Sinks.Console.dll
+ serilog.sinks.debug/2.0.0/lib/netstandard2.1/Serilog.Sinks.Debug.dll
+ serilog.sinks.file/6.0.0/lib/net8.0/Serilog.Sinks.File.dll
+ serilog/4.0.0/lib/net8.0/Serilog.dll
+ system.identitymodel.tokens.jwt/8.18.0/lib/net9.0/System.IdentityModel.Tokens.Jwt.dll
 
 [analyzerReferences]
 <DOTNET>/packs/Microsoft.AspNetCore.App.Ref/9.0.16/analyzers/dotnet/cs/
@@ -420,6 +457,10 @@ Program.cs
 <DOTNET>/sdk/9.0.314/Sdks/Microsoft.NET.Sdk/analyzers/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
+<NUGET>/microsoft.codeanalysis.analyzers/3.3.4/analyzers/dotnet/cs/
+ Microsoft.CodeAnalysis.Analyzers.dll
+ Microsoft.CodeAnalysis.CSharp.Analyzers.dll
+<NUGET>/microsoft.entityframeworkcore.analyzers/9.0.16/analyzers/dotnet/cs/Microsoft.EntityFrameworkCore.Analyzers.dll
 
 [analyzerConfigFiles]
 ../../.editorconfig

@@ -4,7 +4,9 @@ using TikTokShop.Api.Extensions;
 using TikTokShop.Api.Middlewares;
 using TikTokShop.Application;
 using TikTokShop.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using TikTokShop.Infrastructure;
+using TikTokShop.Infrastructure.Persistence;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -18,6 +20,16 @@ try
         config.ReadFrom.Configuration(ctx.Configuration)
               .ReadFrom.Services(services)
               .Enrich.FromLogContext());
+
+    // CORS — đọc danh sách origins từ config, Railway override qua env var Cors__Origins
+    var corsOrigins = (builder.Configuration["Cors:Origins"] ?? "http://localhost:5173")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    builder.Services.AddCors(opts =>
+        opts.AddDefaultPolicy(p =>
+            p.WithOrigins(corsOrigins)
+             .AllowAnyHeader()
+             .AllowAnyMethod()
+             .AllowCredentials()));
 
     builder.Services.AddControllers()
         .AddJsonOptions(o =>
@@ -38,6 +50,14 @@ try
 
     var app = builder.Build();
 
+    // Auto-migrate on startup — Railway sẽ retry nếu DB chưa sẵn sàng
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Database.MigrateAsync();
+        Log.Information("Database migration completed");
+    }
+
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseSerilogRequestLogging(opts =>
     {
@@ -50,6 +70,7 @@ try
     app.UseMiddleware<ExceptionHandlingMiddleware>();
     app.MapOpenApi();
     app.MapScalarApiReference();
+    app.UseCors();
     app.UseHttpsRedirection();
     app.UseAuthentication();
     app.UseAuthorization();
