@@ -1,0 +1,13 @@
+**/.vs
+**/.vscode
+**/.git
+**/bin
+**/obj
+**/node_modules
+**/*.user
+frontend/
+tests/
+logs/
+.env
+.env.*
+!.env.example

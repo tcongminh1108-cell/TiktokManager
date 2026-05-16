@@ -1,0 +1,9 @@
+global using System.Net;
+global using System.Net.Http.Json;
+global using System.Text.Json;
+global using FluentAssertions;
+global using Xunit;
+global using TikTokShop.Application.Common.Models;
+global using TikTokShop.Application.Features.Auth.Dtos;
+global using TikTokShop.Application.Features.Products.Dtos;
+global using TikTokShop.IntegrationTests.Infrastructure;

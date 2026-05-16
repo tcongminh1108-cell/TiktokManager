@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(dotnet build *)",
+      "PowerShell(Get-ChildItem \"D:\\\\Freelancer\\\\TiktokManager\\\\src\\\\TikTokShop.Infrastructure\" -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\Freelancer\\\\TiktokManager\\\\src\\\\TikTokShop.Application\" -Recurse -File | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\Freelancer\\\\TiktokManager\\\\src\\\\TikTokShop.Api\\\\Middlewares\" -Recurse -File 2>$null | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\Freelancer\\\\TiktokManager\\\\src\\\\TikTokShop.Api\" -Directory | Where-Object { $_.Name -notmatch \"^\\(bin|obj\\)$\" } | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\Freelancer\\\\TiktokManager\\\\src\\\\TikTokShop.Api\\\\Extensions\" -File | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\Freelancer\\\\TiktokManager\\\\src\\\\TikTokShop.Api\\\\Filters\" -File | ForEach-Object { $_.FullName })",
+      "Bash(Get-ChildItem -Path \"D:\\\\Freelancer\\\\TiktokManager\" -Recurse -Depth 2)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(dotnet add *)",
+      "Bash(dotnet ef *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Freelancer\\\\TiktokManager\" -Force)",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(Select-String -Pattern \"stock_movement\" -Context 5)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Freelancer\\\\TiktokManager\" -Recurse -Directory -Filter \"Migrations\")",
+      "Bash(grep -E \"\\\\.cs$\")",
+      "Bash(Get-ChildItem *)",
+      "Bash(npm --version)",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const pkg = require\\('./node_modules/antd/package.json'\\); console.log\\(pkg.version\\)\")",
+      "Bash(node *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "Bash(npm run *)",
+      "Bash(Remove-Item \"D:\\\\Freelancer\\\\TiktokManager\\\\src\\\\TikTokShop.Infrastructure\\\\Persistence\\\\Migrations\\\\20260516082809_AddWebhookEvents.cs\" -Force)",
+      "Bash(Remove-Item \"D:\\\\Freelancer\\\\TiktokManager\\\\src\\\\TikTokShop.Infrastructure\\\\Persistence\\\\Migrations\\\\20260516082809_AddWebhookEvents.Designer.cs\" -Force)",
+      "Bash(Write-Host \"Removed empty migration files\")",
+      "Bash(dotnet test *)",
+      "Bash(docker info *)",
+      "PowerShell(docker info *)"
+    ]
+  }
+}
