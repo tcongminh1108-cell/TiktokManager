@@ -695,6 +695,21 @@ Background service mỗi 1 giờ:
 - **PHẢI** giải thích ngắn lý do nếu lệch khỏi quy ước (vd: "Bỏ qua soft delete cho bảng A vì lý do X").
 - **PHẢI** kèm using statements đầy đủ, không để code thiếu reference.
 - **PHẢI** đặt code đúng folder theo Section 3.2.
+- **PHẢI** thêm comment hoặc summary tiếng Việt giải thích ý nghĩa cho:
+  - Mọi field trong Entity, DTO, ViewModel (dạng `/// <summary>` cho C# hoặc `//` inline cho TS).
+  - Mọi method/function có logic nghiệp vụ không hiển nhiên.
+  - Mọi constant, enum value, và magic number.
+  - Các đoạn code phức tạp, công thức tính toán, hoặc workaround đặc biệt.
+  - Ví dụ C#:
+    ```csharp
+    /// <summary>Số lượng hàng thực tế đang giữ chờ ship (đã reserve, chưa xuất kho).</summary>
+    public int ReservedQuantity { get; set; }
+    ```
+  - Ví dụ TypeScript:
+    ```ts
+    /** Tổng doanh thu sau khi trừ phí TikTok và hoàn hàng */
+    netRevenue: number;
+    ```
 
 ### Khi sửa bug:
 - Tìm root cause, không chỉ patch surface.

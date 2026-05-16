@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Scalar.AspNetCore;
 using Serilog;
 using TikTokShop.Api.Extensions;
@@ -58,6 +59,12 @@ try
         Log.Information("Database migration completed");
     }
 
+    // Đọc X-Forwarded-* headers từ Railway/proxy trước mọi middleware khác
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    });
+
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseSerilogRequestLogging(opts =>
     {
@@ -68,10 +75,14 @@ try
         };
     });
     app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+    // Chỉ redirect HTTPS khi chạy local dev, Railway tự xử lý TLS ở proxy
+    if (app.Environment.IsDevelopment())
+        app.UseHttpsRedirection();
+
+    app.UseCors();
     app.MapOpenApi();
     app.MapScalarApiReference();
-    app.UseCors();
-    app.UseHttpsRedirection();
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseMiddleware<UserContextEnrichmentMiddleware>();

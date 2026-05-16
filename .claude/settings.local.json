@@ -32,7 +32,9 @@
       "Bash(Write-Host \"Removed empty migration files\")",
       "Bash(dotnet test *)",
       "Bash(docker info *)",
-      "PowerShell(docker info *)"
+      "PowerShell(docker info *)",
+      "Bash(npx plugins *)",
+      "Bash(git rm *)"
     ]
   }
 }
