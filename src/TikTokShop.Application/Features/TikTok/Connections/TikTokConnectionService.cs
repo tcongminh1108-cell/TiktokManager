@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using TikTokShop.Application.Common.Models;
 using TikTokShop.Application.Features.TikTok.Connections.Dtos;
 using TikTokShop.Application.Interfaces;
 using TikTokShop.Domain.Entities;
@@ -13,24 +16,35 @@ public sealed class TikTokConnectionService(
     ICurrentUser currentUser,
     ITikTokApiClient tikTokClient,
     ITikTokTokenProtector tokenProtector,
-    IOAuthStateCache stateCache) : ITikTokConnectionService
+    IOAuthStateCache stateCache,
+    IOptions<TikTokAppOptions> tikTokOptions,
+    ILogger<TikTokConnectionService> logger) : ITikTokConnectionService
 {
     private static readonly TimeSpan STATE_TTL = TimeSpan.FromMinutes(10);
+
+    // Event types to auto-register on every new shop connection.
+    private static readonly string[] AUTO_WEBHOOK_EVENTS =
+    [
+        "ORDER_STATUS_CHANGE",
+        "CANCEL_STATUS_CHANGE",
+        "RETURN_STATUS_CHANGE",
+        "AUTHORIZATION_REMOVED"
+    ];
 
     public Task<TikTokAuthUrlResponse> GetAuthUrlAsync(string? redirectAfter, CancellationToken ct = default)
     {
         var state = Guid.NewGuid().ToString("N");
-        stateCache.Set(state, redirectAfter ?? string.Empty, STATE_TTL);
+        // Store TenantId in the state cache so the anonymous callback can resolve the tenant.
+        stateCache.Set(state, new OAuthStateData(currentUser.TenantId, redirectAfter ?? string.Empty), STATE_TTL);
 
         // The controller builds the full TikTok OAuth URL using state + configured AppKey.
-        // We only return the state here; the controller composes the redirect URL.
         return Task.FromResult(new TikTokAuthUrlResponse(string.Empty, state));
     }
 
     public async Task<int> HandleCallbackAsync(string code, string state, CancellationToken ct = default)
     {
         // CSRF guard — state must match what was issued during GetAuthUrl.
-        if (!stateCache.TryGetAndRemove(state, out _))
+        if (!stateCache.TryGetAndRemove(state, out var stateData))
             throw new BusinessRuleException("Invalid or expired OAuth state. Please start the connection flow again.");
 
         // Exchange authorization code for tokens.
@@ -38,12 +52,14 @@ public sealed class TikTokConnectionService(
 
         // Fetch the list of shops associated with the granted token.
         var shops = await tikTokClient.GetAuthorizedShopsAsync(tokens.AccessToken, ct);
+        var tenantId = stateData.TenantId;
+        var webhookUrl = tikTokOptions.Value.WebhookCallbackUrl;  // empty = no webhook auto-registration
 
         int created = 0;
         foreach (var shop in shops)
         {
             var exists = await db.TikTokShopConnections
-                .AnyAsync(c => c.TenantId == currentUser.TenantId && c.ShopId == shop.ShopId, ct);
+                .AnyAsync(c => c.TenantId == tenantId && c.ShopId == shop.ShopId, ct);
 
             if (exists)
                 continue;
@@ -52,7 +68,7 @@ public sealed class TikTokConnectionService(
 
             var connection = new TikTokShopConnection
             {
-                TenantId = currentUser.TenantId,
+                TenantId = tenantId,
                 ShopId = shop.ShopId,
                 ShopName = shop.ShopName,
                 ShopCipher = tokenProtector.Protect(shop.Cipher),
@@ -66,6 +82,26 @@ public sealed class TikTokConnectionService(
 
             db.TikTokShopConnections.Add(connection);
             created++;
+
+            // Auto-register webhooks for this shop if callback URL is configured.
+            if (!string.IsNullOrEmpty(webhookUrl))
+            {
+                var ctx = new TikTokApiContext(tokens.AccessToken, shop.Cipher, baseUrl);
+                foreach (var eventType in AUTO_WEBHOOK_EVENTS)
+                {
+                    try
+                    {
+                        await tikTokClient.RegisterWebhookAsync(ctx, eventType, webhookUrl, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Webhook registration is best-effort — don't block the connection save.
+                        logger.LogWarning(ex,
+                            "Failed to register webhook {EventType} for shop {ShopId}. Will need manual setup.",
+                            eventType, shop.ShopId);
+                    }
+                }
+            }
         }
 
         await db.SaveChangesAsync(ct);

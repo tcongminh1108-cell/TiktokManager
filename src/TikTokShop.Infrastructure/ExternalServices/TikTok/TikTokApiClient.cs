@@ -66,7 +66,8 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
             .Build();
     }
 
-    // ─── Auth endpoints (no shop context, no rate limiter needed) ────────────
+    // ─── Auth endpoints (no shop context, no rate limiter, no signing) ──────
+    // TikTok token endpoints live on auth.tiktok-shops.com and use plain GET requests.
 
     public async Task<TikTokTokenResponse> ExchangeCodeAsync(string code, CancellationToken ct = default)
     {
@@ -75,11 +76,10 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
         {
             ["app_key"] = _settings.AppKey,
             ["app_secret"] = _settings.AppSecret,
-            ["code"] = code,
+            ["auth_code"] = code,          // TikTok expects "auth_code", not "code"
             ["grant_type"] = "authorized_code"
         };
-        @params["sign"] = ComputeSign(path, @params);
-        return await PostToAuthAsync<TikTokTokenResponse>(path, @params, ct);
+        return await GetFromTokenApiAsync<TikTokTokenResponse>(path, @params, ct);
     }
 
     public async Task<TikTokTokenResponse> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
@@ -92,8 +92,7 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
             ["refresh_token"] = refreshToken,
             ["grant_type"] = "refresh_token"
         };
-        @params["sign"] = ComputeSign(path, @params);
-        return await PostToAuthAsync<TikTokTokenResponse>(path, @params, ct);
+        return await GetFromTokenApiAsync<TikTokTokenResponse>(path, @params, ct);
     }
 
     public async Task<IReadOnlyList<TikTokShopInfo>> GetAuthorizedShopsAsync(
@@ -180,9 +179,10 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
 
         return await _resilience.ExecuteAsync(async innerCt =>
         {
-            var path = "/order/202309/orders/detail";
-            var (url, baseParams) = BuildShopUrl(ctx, path);
-            baseParams["order_id_list"] = $"[\"{orderId}\"]";
+            // TikTok uses GET /order/202309/orders with ids query param, NOT a separate /detail path.
+            var path = "/order/202309/orders";
+            var (_, baseParams) = BuildShopUrl(ctx, path);
+            baseParams["ids"] = $"[\"{orderId}\"]";
             baseParams["sign"] = ComputeSign(path, baseParams);
 
             var fullUrl = BuildUrl(ctx.BaseApiUrl, path, baseParams);
@@ -203,9 +203,10 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
 
         return await _resilience.ExecuteAsync(async innerCt =>
         {
-            var path = "/return/202309/returns/detail";
-            var (url, baseParams) = BuildShopUrl(ctx, path);
-            baseParams["return_order_id_list"] = $"[\"{returnId}\"]";
+            // TikTok return APIs live under return_refund/202309, not return/202309.
+            var path = "/return_refund/202309/returns";
+            var (_, baseParams) = BuildShopUrl(ctx, path);
+            baseParams["return_order_id"] = returnId;
             baseParams["sign"] = ComputeSign(path, baseParams);
 
             var fullUrl = BuildUrl(ctx.BaseApiUrl, path, baseParams);
@@ -281,18 +282,24 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
     // ─── Phase 7.7 — Push Inventory ───────────────────────────────────────────
 
     public async Task UpdateInventoryAsync(
-        TikTokApiContext ctx, string tikTokSkuId, int quantity, CancellationToken ct = default)
+        TikTokApiContext ctx, string tikTokProductId, string tikTokSkuId,
+        int quantity, string? warehouseId = null, CancellationToken ct = default)
     {
         await _rateLimiter.AcquireAsync(ctx.ShopCipher, ct);
 
         await _resilience.ExecuteAsync(async innerCt =>
         {
-            var path = "/product/202309/inventory/update";
+            // Path includes productId; body uses skus[].inventory[].warehouse_id (not warehouse_type).
+            var path = $"/product/202309/products/{tikTokProductId}/inventory/update";
             var (url, baseParams) = BuildShopUrl(ctx, path);
+
+            object inventoryEntry = warehouseId is not null
+                ? new { quantity, warehouse_id = warehouseId }
+                : (object)new { quantity };
 
             var body = new
             {
-                sku_list = new[] { new { sku_id = tikTokSkuId, inventory = new[] { new { warehouse_type = 1, quantity } } } }
+                skus = new[] { new { id = tikTokSkuId, inventory = new[] { inventoryEntry } } }
             };
 
             using var req = BuildSignedPostRequest(ctx, path, url, baseParams, body);
@@ -338,9 +345,9 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
 
         return await _resilience.ExecuteAsync(async innerCt =>
         {
-            var path = "/finance/202309/orders";
+            // Correct path: /finance/202309/statements/{statementId}/statement_transactions
+            var path = $"/finance/202309/statements/{statementId}/statement_transactions";
             var (_, baseParams) = BuildShopUrl(ctx, path);
-            baseParams["statement_id"] = statementId;
             baseParams["page_size"] = "50";
             if (pageToken is not null) baseParams["page_token"] = pageToken;
             baseParams["sign"] = ComputeSign(path, baseParams);
@@ -353,6 +360,63 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
             var raw = await resp.Content.ReadAsStringAsync(innerCt);
             EnsureSuccess(raw, path);
             return raw;
+        }, ct);
+    }
+
+    // ─── Webhook management ───────────────────────────────────────────────────
+
+    public async Task<string?> GetShopWebhooksAsync(TikTokApiContext ctx, CancellationToken ct = default)
+    {
+        await _rateLimiter.AcquireAsync(ctx.ShopCipher, ct);
+
+        return await _resilience.ExecuteAsync(async innerCt =>
+        {
+            var path = "/event/202309/webhooks";
+            var (_, baseParams) = BuildShopUrl(ctx, path);
+            baseParams["sign"] = ComputeSign(path, baseParams);
+
+            var fullUrl = BuildUrl(ctx.BaseApiUrl, path, baseParams);
+            using var req = new HttpRequestMessage(HttpMethod.Get, fullUrl);
+            req.Headers.Add("x-tts-access-token", ctx.AccessToken);
+
+            using var resp = await _http.SendAsync(req, innerCt);
+            var raw = await resp.Content.ReadAsStringAsync(innerCt);
+            EnsureSuccess(raw, path);
+            return raw;
+        }, ct);
+    }
+
+    public async Task RegisterWebhookAsync(
+        TikTokApiContext ctx, string eventType, string callbackUrl, CancellationToken ct = default)
+    {
+        await _rateLimiter.AcquireAsync(ctx.ShopCipher, ct);
+
+        await _resilience.ExecuteAsync(async innerCt =>
+        {
+            var path = "/event/202309/webhooks";
+            var (url, baseParams) = BuildShopUrl(ctx, path);
+            var body = new { address = callbackUrl, event_type = eventType };
+            using var req = BuildSignedPostRequest(ctx, path, url, baseParams, body, HttpMethod.Put);
+            using var resp = await _http.SendAsync(req, innerCt);
+            var raw = await resp.Content.ReadAsStringAsync(innerCt);
+            EnsureSuccess(raw, path);
+        }, ct);
+    }
+
+    public async Task DeleteWebhookAsync(
+        TikTokApiContext ctx, string eventType, CancellationToken ct = default)
+    {
+        await _rateLimiter.AcquireAsync(ctx.ShopCipher, ct);
+
+        await _resilience.ExecuteAsync(async innerCt =>
+        {
+            var path = "/event/202309/webhooks";
+            var (url, baseParams) = BuildShopUrl(ctx, path);
+            var body = new { event_type = eventType };
+            using var req = BuildSignedPostRequest(ctx, path, url, baseParams, body, HttpMethod.Delete);
+            using var resp = await _http.SendAsync(req, innerCt);
+            var raw = await resp.Content.ReadAsStringAsync(innerCt);
+            EnsureSuccess(raw, path);
         }, ct);
     }
 
@@ -401,18 +465,21 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
 
     private HttpRequestMessage BuildSignedPostRequest(
         TikTokApiContext ctx, string path,
-        string baseUrl, SortedDictionary<string, string> queryParams, object bodyObj)
+        string baseUrl, SortedDictionary<string, string> queryParams, object bodyObj,
+        HttpMethod? method = null)
     {
-        queryParams["sign"] = ComputeSign(path, queryParams);
+        // Serialize body once so the same string is used for both signing and sending.
+        var bodyJson = JsonSerializer.Serialize(bodyObj, _json);
+        queryParams["sign"] = ComputeSign(path, queryParams, bodyJson);
         var url = BuildUrl(ctx.BaseApiUrl, path, queryParams);
-        var req = new HttpRequestMessage(HttpMethod.Post, url);
+        var req = new HttpRequestMessage(method ?? HttpMethod.Post, url);
         req.Headers.Add("x-tts-access-token", ctx.AccessToken);
-        req.Content = JsonContent.Create(bodyObj, options: _json);
+        req.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
         return req;
     }
 
-    // TikTok signature: HMAC-SHA256(app_secret, app_secret + path + sorted_params + app_secret)
-    private string ComputeSign(string path, SortedDictionary<string, string> sortedParams)
+    // TikTok signature: HMAC-SHA256(secret, secret + path + sorted_params_KV + body_string + secret)
+    private string ComputeSign(string path, SortedDictionary<string, string> sortedParams, string bodyString = "")
     {
         var sb = new StringBuilder();
         sb.Append(_settings.AppSecret);
@@ -423,6 +490,8 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
             sb.Append(kv.Key);
             sb.Append(kv.Value);
         }
+        if (!string.IsNullOrEmpty(bodyString))
+            sb.Append(bodyString);
         sb.Append(_settings.AppSecret);
 
         var hash = HMACSHA256.HashData(
@@ -438,17 +507,18 @@ public sealed class TikTokApiClient : ITikTokApiClient, IDisposable
         return $"{baseUrl}{path}?{query}";
     }
 
-    private async Task<T> PostToAuthAsync<T>(string path, SortedDictionary<string, string> @params, CancellationToken ct)
+    // Token exchange/refresh: plain GET to auth.tiktok-shops.com, no signing required.
+    private async Task<T> GetFromTokenApiAsync<T>(string path, SortedDictionary<string, string> @params, CancellationToken ct)
     {
-        var url = BuildUrl(_settings.ApiBaseUrl, path, @params);
-        using var resp = await _http.PostAsync(url, content: null, ct);
+        var url = BuildUrl(_settings.TokenBaseUrl, path, @params);
+        using var resp = await _http.GetAsync(url, ct);
         var body = await resp.Content.ReadAsStringAsync(ct);
-        _logger.LogDebug("POST {Path} → {Status}: {Body}", path, (int)resp.StatusCode, body);
+        _logger.LogDebug("GET {Path} → {Status}: {Body}", path, (int)resp.StatusCode, body);
         EnsureSuccess(body, path);
 
         var doc = JsonNode.Parse(body)!;
         return JsonSerializer.Deserialize<T>(doc["data"]!.ToJsonString(), _json)
-               ?? throw new InvalidOperationException("Failed to deserialize TikTok response.");
+               ?? throw new InvalidOperationException("Failed to deserialize TikTok token response.");
     }
 
     private void EnsureSuccess(string body, string path)

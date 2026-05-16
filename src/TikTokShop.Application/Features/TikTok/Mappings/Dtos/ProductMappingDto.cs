@@ -12,6 +12,7 @@ public record ProductMappingDto(
     string TikTokProductId,
     string TikTokSkuId,
     string TikTokSkuName,
+    string? WarehouseId,
     DateTimeOffset CreatedAt
 );
 
@@ -20,7 +21,8 @@ public record CreateProductMappingRequest(
     Guid ConnectionId,
     string TikTokProductId,
     string TikTokSkuId,
-    string TikTokSkuName
+    string TikTokSkuName,
+    string? WarehouseId
 );
 
 public class ProductMappingQueryParams : PageRequest

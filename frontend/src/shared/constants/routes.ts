@@ -9,5 +9,9 @@ export const ROUTES = {
   INVENTORY: '/inventory',
   USERS: '/users',
   TIKTOK_SHOPS: '/settings/tiktok-shops',
+  PRODUCT_MAPPINGS: '/product-mappings',
+  TIKTOK_ORDERS: '/tiktok-orders',
+  TIKTOK_RETURNS: '/tiktok-returns',
+  TIKTOK_FINANCE: '/tiktok-finance',
   PROFILE: '/profile',
 } as const

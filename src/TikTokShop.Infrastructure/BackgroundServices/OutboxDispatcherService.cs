@@ -185,7 +185,7 @@ public sealed class OutboxDispatcherService(
                 tokenProtector.Unprotect(connection.ShopCipher),
                 connection.BaseApiUrl);
 
-            await apiClient.UpdateInventoryAsync(ctx, mapping.TikTokSkuId, available, ct);
+            await apiClient.UpdateInventoryAsync(ctx, mapping.TikTokProductId, mapping.TikTokSkuId, available, mapping.WarehouseId, ct);
 
             logger.LogInformation(
                 "Pushed inventory {Qty} for product {ProductId} / SKU {SkuId} on shop {ShopId}.",

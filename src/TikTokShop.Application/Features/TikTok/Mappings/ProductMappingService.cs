@@ -50,7 +50,7 @@ public sealed class ProductMappingService(
                 x.m.Id, x.m.ProductId, x.p.Name, x.p.Code,
                 x.m.ConnectionId, x.c.ShopName,
                 x.m.TikTokProductId, x.m.TikTokSkuId, x.m.TikTokSkuName,
-                x.m.CreatedAt))
+                x.m.WarehouseId, x.m.CreatedAt))
             .ToListAsync(ct);
 
         return new PaginatedResult<ProductMappingDto>(items, totalCount, query.PageNumber, query.PageSize);
@@ -84,7 +84,8 @@ public sealed class ProductMappingService(
             ConnectionId = request.ConnectionId,
             TikTokProductId = request.TikTokProductId,
             TikTokSkuId = request.TikTokSkuId,
-            TikTokSkuName = request.TikTokSkuName
+            TikTokSkuName = request.TikTokSkuName,
+            WarehouseId = request.WarehouseId
         };
 
         db.ProductTikTokMappings.Add(mapping);
@@ -94,7 +95,7 @@ public sealed class ProductMappingService(
             mapping.Id, mapping.ProductId, product.Name, product.Code,
             mapping.ConnectionId, connection.ShopName,
             mapping.TikTokProductId, mapping.TikTokSkuId, mapping.TikTokSkuName,
-            mapping.CreatedAt);
+            mapping.WarehouseId, mapping.CreatedAt);
     }
 
     public async Task DeleteMappingAsync(Guid id, CancellationToken ct = default)

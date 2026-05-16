@@ -11,6 +11,7 @@ public class ProductTikTokMappingConfiguration : IEntityTypeConfiguration<Produc
         builder.Property(m => m.TikTokProductId).IsRequired().HasMaxLength(100);
         builder.Property(m => m.TikTokSkuId).IsRequired().HasMaxLength(100);
         builder.Property(m => m.TikTokSkuName).IsRequired().HasMaxLength(300);
+        builder.Property(m => m.WarehouseId).HasMaxLength(100);
 
         // One TikTok SKU can only be mapped once per connection (per tenant enforced by global filter).
         builder.HasIndex(m => new { m.TenantId, m.ConnectionId, m.TikTokProductId, m.TikTokSkuId })

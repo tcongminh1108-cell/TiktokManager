@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using TikTokShop.Application.Common.Models;
 using TikTokShop.Application.Interfaces;
 using TikTokShop.Domain.Enums;
 using TikTokShop.Domain.Interfaces;
@@ -72,6 +73,7 @@ public static class DependencyInjection
         services.AddDataProtection();
         services.AddMemoryCache();
         services.Configure<TikTokSettings>(configuration.GetSection("TikTok"));
+        services.Configure<TikTokAppOptions>(configuration.GetSection("TikTok"));
         services.AddSingleton<ITikTokTokenProtector, TikTokTokenProtector>();
         services.AddSingleton<ITikTokWebhookSignatureVerifier, TikTokWebhookSignatureVerifier>();
         services.AddSingleton<IOAuthStateCache, MemoryOAuthStateCache>();

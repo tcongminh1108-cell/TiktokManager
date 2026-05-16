@@ -11,4 +11,7 @@ public class ProductTikTokMapping : BaseEntity
     public string TikTokProductId { get; set; } = null!;
     public string TikTokSkuId { get; set; } = null!;
     public string TikTokSkuName { get; set; } = null!;
+
+    /// <summary>TikTok warehouse ID for inventory updates. Nullable — when null the update omits warehouse_id.</summary>
+    public string? WarehouseId { get; set; }
 }

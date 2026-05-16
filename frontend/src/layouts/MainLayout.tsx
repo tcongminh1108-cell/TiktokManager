@@ -13,6 +13,11 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  LinkOutlined,
+  SwapOutlined,
+  FileTextOutlined,
+  RollbackOutlined,
+  DollarOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '@/features/auth/store/useAuthStore'
 import { authApi } from '@/features/auth/api/authApi'
@@ -75,6 +80,37 @@ export default function MainLayout() {
       key: ROUTES.INVENTORY,
       icon: <InboxOutlined />,
       label: 'Tồn kho',
+    },
+    {
+      key: 'tiktok-group',
+      icon: <LinkOutlined />,
+      label: 'TikTok',
+      children: [
+        {
+          key: ROUTES.TIKTOK_ORDERS,
+          icon: <FileTextOutlined />,
+          label: 'Đơn hàng',
+        },
+        {
+          key: ROUTES.TIKTOK_RETURNS,
+          icon: <RollbackOutlined />,
+          label: 'Hoàn trả',
+        },
+        {
+          key: ROUTES.TIKTOK_FINANCE,
+          icon: <DollarOutlined />,
+          label: 'Tài chính',
+        },
+        ...(hasRole('Manager')
+          ? [
+              {
+                key: ROUTES.PRODUCT_MAPPINGS,
+                icon: <SwapOutlined />,
+                label: 'Product Mappings',
+              },
+            ]
+          : []),
+      ],
     },
     ...(hasRole('Admin')
       ? [
