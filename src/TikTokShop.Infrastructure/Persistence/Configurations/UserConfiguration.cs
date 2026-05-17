@@ -13,8 +13,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.FullName).IsRequired().HasMaxLength(200);
         builder.Property(u => u.Role).HasConversion<int>().IsRequired();
 
-        // Unique email per tenant, excluding soft-deleted users (partial index)
-        builder.HasIndex(u => new { u.TenantId, u.Email })
+        // Email unique toàn cục (không phụ thuộc tenant), loại trừ bản ghi đã xóa mềm
+        builder.HasIndex(u => u.Email)
                .IsUnique()
                .HasFilter("is_deleted = false");
 

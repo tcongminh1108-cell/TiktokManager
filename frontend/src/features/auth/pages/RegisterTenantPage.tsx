@@ -11,11 +11,6 @@ const { Title, Text } = Typography
 
 const schema = z.object({
   tenantName: z.string().min(2, 'Tên shop tối thiểu 2 ký tự'),
-  tenantCode: z
-    .string()
-    .min(2, 'Code tối thiểu 2 ký tự')
-    .max(20, 'Code tối đa 20 ký tự')
-    .regex(/^[a-z0-9-]+$/, 'Chỉ dùng chữ thường, số và dấu gạch ngang'),
   contactEmail: z.string().email('Email không hợp lệ'),
   contactPhone: z.string().optional(),
   adminEmail: z.string().email('Email không hợp lệ'),
@@ -38,7 +33,6 @@ export default function RegisterTenantPage() {
     resolver: zodResolver(schema),
     defaultValues: {
       tenantName: '',
-      tenantCode: '',
       contactEmail: '',
       contactPhone: '',
       adminEmail: '',
@@ -71,34 +65,17 @@ export default function RegisterTenantPage() {
           Thông tin Shop
         </Title>
 
-        <Row gutter={16}>
-          <Col span={14}>
-            <Form.Item
-              label="Tên shop"
-              validateStatus={errors.tenantName ? 'error' : ''}
-              help={errors.tenantName?.message}
-            >
-              <Controller
-                name="tenantName"
-                control={control}
-                render={({ field }) => <Input {...field} placeholder="My TikTok Shop" />}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={10}>
-            <Form.Item
-              label="Tenant code"
-              validateStatus={errors.tenantCode ? 'error' : ''}
-              help={errors.tenantCode?.message}
-            >
-              <Controller
-                name="tenantCode"
-                control={control}
-                render={({ field }) => <Input {...field} placeholder="my-shop" />}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+        <Form.Item
+          label="Tên shop"
+          validateStatus={errors.tenantName ? 'error' : ''}
+          help={errors.tenantName?.message}
+        >
+          <Controller
+            name="tenantName"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="My TikTok Shop" />}
+          />
+        </Form.Item>
 
         <Row gutter={16}>
           <Col span={14}>

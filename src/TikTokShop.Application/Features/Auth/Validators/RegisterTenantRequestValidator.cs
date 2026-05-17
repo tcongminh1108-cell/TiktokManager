@@ -11,12 +11,6 @@ public class RegisterTenantRequestValidator : AbstractValidator<RegisterTenantRe
             .NotEmpty()
             .MaximumLength(100);
 
-        RuleFor(x => x.TenantCode)
-            .NotEmpty()
-            .MaximumLength(50)
-            .Matches(@"^[a-z0-9\-]+$")
-            .WithMessage("TenantCode must contain only lowercase letters, numbers, and hyphens.");
-
         RuleFor(x => x.ContactEmail)
             .NotEmpty()
             .EmailAddress()

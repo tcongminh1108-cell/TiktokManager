@@ -15,7 +15,6 @@ export interface LoginRequest {
 
 export interface RegisterTenantRequest {
   tenantName: string
-  tenantCode: string
   contactEmail: string
   contactPhone?: string
   adminEmail: string

@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using TikTokShop.Application.Features.Auth.Dtos;
 using TikTokShop.Application.Interfaces;
@@ -18,16 +20,20 @@ public sealed class AuthService(
 {
     public async Task<AuthResponse> RegisterTenantAsync(RegisterTenantRequest request, string? ipAddress)
     {
-        var codeExists = await db.Tenants
-            .AnyAsync(t => t.Code == request.TenantCode.ToLower());
+        // Kiểm tra email admin chưa tồn tại ở bất kỳ tenant nào
+        var emailExists = await db.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Email == request.AdminEmail.ToLower() && !u.IsDeleted);
+        if (emailExists)
+            throw new ConflictException("User", "email", request.AdminEmail);
 
-        if (codeExists)
-            throw new ConflictException("Tenant", "code", request.TenantCode);
+        // Tự sinh TenantCode từ tên shop (có xử lý tiếng Việt)
+        var code = await GenerateUniqueTenantCodeAsync(request.TenantName);
 
         var tenant = new Tenant
         {
             Name = request.TenantName,
-            Code = request.TenantCode.ToLower(),
+            Code = code,
             ContactEmail = request.ContactEmail,
             ContactPhone = request.ContactPhone,
             Status = TenantStatus.Active
@@ -57,27 +63,23 @@ public sealed class AuthService(
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress)
     {
-        var tenant = await db.Tenants
-            .FirstOrDefaultAsync(t => t.Code == request.TenantCode.ToLower())
-            ?? throw new UnauthorizedException("Invalid tenant code, email, or password.");
-
-        if (tenant.Status != TenantStatus.Active)
-            throw new UnauthorizedException("Tenant is not active.");
-
-        // Bypass tenant query filter — user is not yet authenticated
+        // Tìm user theo email, bỏ qua tenant filter (email unique toàn cục)
         var user = await db.Users
             .IgnoreQueryFilters()
+            .Include(u => u.Tenant)
             .FirstOrDefaultAsync(u =>
-                u.TenantId == tenant.Id &&
                 u.Email == request.Email.ToLower() &&
                 !u.IsDeleted)
-            ?? throw new UnauthorizedException("Invalid tenant code, email, or password.");
+            ?? throw new UnauthorizedException("Email hoặc mật khẩu không đúng.");
 
         if (!user.IsActive)
-            throw new UnauthorizedException("User account is disabled.");
+            throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa.");
 
         if (!passwordHasher.Verify(request.Password, user.PasswordHash))
-            throw new UnauthorizedException("Invalid tenant code, email, or password.");
+            throw new UnauthorizedException("Email hoặc mật khẩu không đúng.");
+
+        if (user.Tenant.Status != TenantStatus.Active)
+            throw new UnauthorizedException("Tenant đã bị tạm ngưng. Vui lòng liên hệ quản trị viên.");
 
         user.LastLoginAt = DateTimeOffset.UtcNow;
 
@@ -159,5 +161,63 @@ public sealed class AuthService(
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
         return Convert.ToHexString(bytes).ToLower();
+    }
+
+    /// <summary>Sinh TenantCode unique từ tên shop, thử thêm suffix ngẫu nhiên nếu trùng.</summary>
+    private async Task<string> GenerateUniqueTenantCodeAsync(string tenantName)
+    {
+        var baseSlug = ToSlug(tenantName);
+
+        if (!await db.Tenants.AnyAsync(t => t.Code == baseSlug))
+            return baseSlug;
+
+        for (var i = 0; i < 10; i++)
+        {
+            var candidate = $"{baseSlug}-{RandomSuffix(4)}";
+            if (!await db.Tenants.AnyAsync(t => t.Code == candidate))
+                return candidate;
+        }
+
+        // Fallback cực hiếm: dùng 8 ký tự đầu GUID
+        return $"{baseSlug}-{Guid.NewGuid():N}"[..Math.Min(50, baseSlug.Length + 9)];
+    }
+
+    /// <summary>Chuyển tên bất kỳ (kể cả tiếng Việt) thành slug ASCII lowercase-hyphen.</summary>
+    private static string ToSlug(string text)
+    {
+        // Xử lý "đ"/"Đ" không tự decompose qua NFD
+        text = text.Replace("đ", "d", StringComparison.OrdinalIgnoreCase)
+                   .Replace("Đ", "d", StringComparison.OrdinalIgnoreCase);
+
+        // NFD: tách ký tự cơ sở khỏi dấu tổ hợp → xóa dấu
+        var normalized = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(normalized.Length);
+        foreach (var c in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+
+        var slug = sb.ToString()
+            .Normalize(NormalizationForm.FormC)
+            .ToLowerInvariant();
+
+        slug = Regex.Replace(slug, @"[\s_]+", "-");        // khoảng trắng/underscore → hyphen
+        slug = Regex.Replace(slug, @"[^a-z0-9\-]", "");   // bỏ ký tự không hợp lệ
+        slug = Regex.Replace(slug, @"-{2,}", "-");          // nhiều hyphen liên tiếp → 1
+        slug = slug.Trim('-');
+
+        // Tối đa 45 ký tự (để chừa chỗ cho suffix "-xxxx")
+        if (slug.Length > 45) slug = slug[..45].TrimEnd('-');
+
+        return string.IsNullOrEmpty(slug) ? "tenant" : slug;
+    }
+
+    private static string RandomSuffix(int length)
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        return new string(Enumerable.Range(0, length)
+            .Select(_ => chars[Random.Shared.Next(chars.Length)])
+            .ToArray());
     }
 }
